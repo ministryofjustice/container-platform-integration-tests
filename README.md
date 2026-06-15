@@ -1,44 +1,73 @@
-# Container Platform Terraform Module Template
+# Container Platform Integration Tests
 
-[![Ministry of Justice Repository Compliance Badge](https://github-community.service.justice.gov.uk/repository-standards/api/container-platform-terraform-template/badge)](https://github-community.service.justice.gov.uk/repository-standards/container-platform-terraform-template)
+[![Ministry of Justice Repository Compliance Badge](https://github-community.service.justice.gov.uk/repository-standards/api/template-repository/badge)](https://github-community.service.justice.gov.uk/repository-standards/template-repository)
 
-A template repository for building Terraform modules for the Container Platform.
+## Introduction
 
-## Usage
+This repository contains integration tests for Container Platform CP3.0 clusters and components.
 
-Click **"Use this template"** to create a new Terraform module repository.
+## How to run Go tests
 
-## Structure
+To run the integration tests on a MoJ Container Platform cluster you must have the following tools installed:
+
+_TODO:_ (Tool versioning here notes here??)
+
+- [kubectl](https://kubernetes.io/docs/tasks/tools/)
+- [terraform](https://learn.hashicorp.com/tutorials/terraform/install-cli)
+- [aws-cli](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html)
+- [git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git)
+- [Go](https://go.dev/doc/install)
+- [Ginkgo v2](https://onsi.github.io/ginkgo/#installing-ginkgo)
+
+You can then either run:
+
+```bash
+go test -v ./...
+```
+
+or
+
+```bash
+cd test; ginkgo -r -v  # for realtime response
+```
+
+### Running individual tests
+
+A neat trick in Ginkgo is to place an "F" in front of the "Describe", "It" or "Context" functions. This marks it as [focused](https://onsi.github.io/ginkgo/#focused-specs).
+
+So, if you have spec like:
 
 ```
-├── main.tf           # Main module resources
-├── variables.tf      # Input variables
-├── outputs.tf        # Output values
-├── versions.tf       # Provider and Terraform version constraints
-└── README.md
+    It("should be idempotent", func() {
 ```
 
-## After Creating Your Module
+You rewrite it as:
 
-1. Update this README with your module's documentation
-2. Update `CODEOWNERS` with the appropriate team
-3. Review `dependabot.yml` configuration
-4. Update the compliance badge URL with your repository name
-5. Add your Terraform resources to `main.tf`
-6. Define input variables in `variables.tf`
-7. Define outputs in `outputs.tf`
-8. Set version constraints in `versions.tf`
+```
+    FIt("should be idempotent", func() {
+```
 
-## Requirements
+And it will run exactly that one spec:
 
-| Name | Version |
-|------|---------|
-| terraform | >= 1.0 |
+```
+[Fail] testing Migrate setCurrentDbVersion [It] should be idempotent
+...
+Ran 1 of 5 Specs in 0.003 seconds
+FAIL! -- 0 Passed | 1 Failed | 0 Pending | 4 Skipped
+```
 
-## Repository Standards
+### Making changes to Ginkgo tests
 
-This repository follows the [Ministry of Justice GitHub Repository Standards](https://github-community.service.justice.gov.uk/repository-standards/guidance).
+Ginkgo works best from the command-line, and [ginkgo watch](https://onsi.github.io/ginkgo/#watching-for-changes) makes it easy to rerun tests on the command line whenever changes are detected.
 
-## License
+## How to update Go dependencies
 
-[MIT License](LICENSE)
+With the repository cloned:
+
+```bash
+cd test; go get -u ./...
+```
+
+Perform the tests as outlined [above](#how-to-run-go-tests) and confirm they pass.
+
+Create a PR and merge to main.
