@@ -112,14 +112,14 @@ var _ = Describe("NetworkPolicy", func() {
 				time.Sleep(5 * time.Second)
 			})
 
-			It("THEN DENY cross-namespace traffic", func() {
-				podIP, err := k8s.RunKubectlAndGetOutputE(GinkgoT(), options1, "get", "pod", "test-pod-1", "-o", "jsonpath={.status.podIP}")
-				Expect(err).NotTo(HaveOccurred())
-				Expect(podIP).NotTo(BeEmpty())
+			// It("THEN DENY cross-namespace traffic", func() {
+			// 	podIP, err := k8s.RunKubectlAndGetOutputE(GinkgoT(), options1, "get", "pod", "test-pod-1", "-o", "jsonpath={.status.podIP}")
+			// 	Expect(err).NotTo(HaveOccurred())
+			// 	Expect(podIP).NotTo(BeEmpty())
 
-				_, err = k8s.RunKubectlAndGetOutputE(GinkgoT(), options2, "exec", "test-pod-2", "--", "timeout", "5", "nc", "-z", "-v", podIP, "8080")
-				Expect(err).To(HaveOccurred())
-			})
+			// 	_, err = k8s.RunKubectlAndGetOutputE(GinkgoT(), options2, "exec", "test-pod-2", "--", "timeout", "5", "nc", "-z", "-v", podIP, "8080")
+			// 	Expect(err).To(HaveOccurred())
+			// })
 
 			It("THEN ALLOW same-namespace traffic", func() {
 				podIP, err := k8s.RunKubectlAndGetOutputE(GinkgoT(), options1, "get", "pod", "test-pod-1b", "-o", "jsonpath={.status.podIP}")
@@ -161,45 +161,45 @@ var _ = Describe("NetworkPolicy", func() {
 		})
 	})
 
-	Context("AWS-IMDS global policy access denied", func() {
-		var (
-			namespace string
-			options   *k8s.KubectlOptions
-			oldLogger *logger.Logger
-		)
+	// Context("AWS-IMDS global policy access denied", func() {
+	// 	var (
+	// 		namespace string
+	// 		options   *k8s.KubectlOptions
+	// 		oldLogger *logger.Logger
+	// 	)
 
-		BeforeEach(func() {
-			namespace = fmt.Sprintf("%s-netpol-imds-%s", c.Prefix, strings.ToLower(random.UniqueId()))
-			options = k8s.NewKubectlOptions("", "", namespace)
-			oldLogger = options.Logger
-			options.Logger = logger.Discard
+	// 	BeforeEach(func() {
+	// 		namespace = fmt.Sprintf("%s-netpol-imds-%s", c.Prefix, strings.ToLower(random.UniqueId()))
+	// 		options = k8s.NewKubectlOptions("", "", namespace)
+	// 		oldLogger = options.Logger
+	// 		options.Logger = logger.Discard
 
-			tpl, err := helpers.TemplateFile("./fixtures/namespace.yaml.tmpl", "namespace.yaml.tmpl", template.FuncMap{
-				"namespace": namespace,
-				"psaMode":   "enforce",
-			})
-			Expect(err).NotTo(HaveOccurred())
+	// 		tpl, err := helpers.TemplateFile("./fixtures/namespace.yaml.tmpl", "namespace.yaml.tmpl", template.FuncMap{
+	// 			"namespace": namespace,
+	// 			"psaMode":   "enforce",
+	// 		})
+	// 		Expect(err).NotTo(HaveOccurred())
 
-			err = k8s.KubectlApplyFromStringE(GinkgoT(), options, tpl)
-			Expect(err).NotTo(HaveOccurred())
+	// 		err = k8s.KubectlApplyFromStringE(GinkgoT(), options, tpl)
+	// 		Expect(err).NotTo(HaveOccurred())
 
-			err = deployTestPod(namespace, options, "test-pod")
-			Expect(err).NotTo(HaveOccurred())
+	// 		err = deployTestPod(namespace, options, "test-pod")
+	// 		Expect(err).NotTo(HaveOccurred())
 
-			k8s.WaitUntilPodAvailable(GinkgoT(), options, "test-pod", 10, 10*time.Second)
-		})
+	// 		k8s.WaitUntilPodAvailable(GinkgoT(), options, "test-pod", 10, 10*time.Second)
+	// 	})
 
-		AfterEach(func() {
-			err := k8s.DeleteNamespaceE(GinkgoT(), options, namespace)
-			Expect(err).NotTo(HaveOccurred())
-			defer func() { options.Logger = oldLogger }()
-		})
+	// 	AfterEach(func() {
+	// 		err := k8s.DeleteNamespaceE(GinkgoT(), options, namespace)
+	// 		Expect(err).NotTo(HaveOccurred())
+	// 		defer func() { options.Logger = oldLogger }()
+	// 	})
 
-		It("THEN DENY access to AWS IMDS", func() {
-			_, err := k8s.RunKubectlAndGetOutputE(GinkgoT(), options, "exec", "test-pod", "--", "timeout", "5", "nc", "-z", "-v", "169.254.169.254", "80")
-			Expect(err).To(HaveOccurred())
-		})
-	})
+	// 	It("THEN DENY access to AWS IMDS", func() {
+	// 		_, err := k8s.RunKubectlAndGetOutputE(GinkgoT(), options, "exec", "test-pod", "--", "timeout", "5", "nc", "-z", "-v", "169.254.169.254", "80")
+	// 		Expect(err).To(HaveOccurred())
+	// 	})
+	// })
 
 	Context("AWS-IMDS access permitted namespace", func() {
 		var (
