@@ -21,6 +21,9 @@ override.tf.json
 venv/
 env/
 
+# Test Report
+test/report.xml 
+
 # Other
 coverage/
 *.sha256
