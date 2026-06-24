@@ -8,6 +8,8 @@ This repository contains integration tests for Container Platform CP3.0 clusters
 
 ## How to run Go tests
 
+### Dependencies 
+
 To run the integration tests on a MoJ Container Platform cluster you must have the following tools installed:
 
 _TODO:_ (Tool versioning here notes here??)
@@ -15,20 +17,20 @@ _TODO:_ (Tool versioning here notes here??)
 - [kubectl](https://kubernetes.io/docs/tasks/tools/)
 - [terraform](https://learn.hashicorp.com/tutorials/terraform/install-cli)
 - [aws-cli](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html)
-- [git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git)
+- [git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Gi)
 - [Go](https://go.dev/doc/install)
-- [Ginkgo v2](https://onsi.github.io/ginkgo/#installing-ginkgo)
 
-You can then either run:
+**Go Libraries Dependencies**
+- [Ginkgo v2](https://onsi.github.io/ginkgo/#installing-ginkgo)<br />`go install github.com/onsi/ginkgo/v2/ginkgo`<br />`go get github.com/onsi/ginkgo`
+- [aws-sdk-go-v2](https://github.com/aws/aws-sdk-go-v2)<br />`go get github.com/aws/aws-sdk-go-v2/service/eks`
+
+###
+
+Command to run tests:
 
 ```bash
-go test -v ./...
-```
-
-or
-
-```bash
-cd test; ginkgo -r -v  # for realtime response
+cd test
+ginkgo -r -v --show-node-events --output-interceptor-mode=none --junit-report=report.xml -- -cluster=<your-cluster-name>
 ```
 
 ### Running individual tests
