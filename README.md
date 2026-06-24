@@ -24,9 +24,7 @@ _TODO:_ (Tool versioning here notes here??)
 - [Ginkgo v2](https://onsi.github.io/ginkgo/#installing-ginkgo)<br />`go install github.com/onsi/ginkgo/v2/ginkgo`<br />`go get github.com/onsi/ginkgo`
 - [aws-sdk-go-v2](https://github.com/aws/aws-sdk-go-v2)<br />`go get github.com/aws/aws-sdk-go-v2/service/eks`
 
-###
-
-Command to run tests:
+### Command to run tests:
 
 ```bash
 cd test
