@@ -17,7 +17,7 @@ _TODO:_ (Tool versioning here notes here??)
 - [kubectl](https://kubernetes.io/docs/tasks/tools/)
 - [terraform](https://learn.hashicorp.com/tutorials/terraform/install-cli)
 - [aws-cli](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html)
-- [git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Gi)
+- [git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git)
 - [Go](https://go.dev/doc/install)
 
 **Go Libraries Dependencies**
