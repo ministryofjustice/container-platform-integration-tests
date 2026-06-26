@@ -24,8 +24,6 @@ var (
 )
 
 var _ = BeforeSuite(func() {
-    //ctx := context.Background()
-
     kubeconfig := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
         clientcmd.NewDefaultClientConfigLoadingRules(),
         &clientcmd.ConfigOverrides{},
@@ -54,7 +52,7 @@ var _ = Describe("EKS Auto Mode", func() {
                 Namespace: "default",
             },
             Spec: corev1.PersistentVolumeClaimSpec{
-//                StorageClassName: ptr("gp2"), // removed now we have a default storage class
+                //StorageClassName: ptr("auto-ebs-storageclass"), // this is the default storage class so deliberately not specifying in the test
                 AccessModes: []corev1.PersistentVolumeAccessMode{
                     corev1.ReadWriteOnce,
                 },
@@ -128,9 +126,9 @@ var _ = Describe("EKS Auto Mode", func() {
                 Get(ctx, ebsTestName, metav1.GetOptions{})
     
             return string(p.Status.Phase)
-        }, "10m", "5s").Should(Equal("Bound")) // Longest Reported Test Time 5m10s
+        }, "2m", "5s").Should(Equal("Bound")) 
 
-        time.Sleep(5 * time.Minute)
+        time.Sleep(20 * time.Second)
 
     })
 
