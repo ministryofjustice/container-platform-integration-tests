@@ -128,7 +128,7 @@ var _ = Describe("EKS Auto Mode", func() {
             return string(p.Status.Phase)
         }, "2m", "5s").Should(Equal("Bound")) 
 
-        time.Sleep(20 * time.Second)
+        time.Sleep(5 * time.Second)
 
     })
 
