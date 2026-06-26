@@ -70,9 +70,11 @@ var _ = Describe("EKS Auto Mode", func() {
         Expect(err).ToNot(HaveOccurred())
     
         DeferCleanup(func() {
-            _ = clientset.CoreV1().
+            time.Sleep(1 * time.Second)
+            err := clientset.CoreV1().
                 PersistentVolumeClaims("default").
                 Delete(ctx, ebsTestName, metav1.DeleteOptions{})
+            Expect(err).ToNot(HaveOccurred())
         })
 
         // Step 2: Create Pod that uses the PVC
@@ -114,9 +116,11 @@ var _ = Describe("EKS Auto Mode", func() {
         Expect(err).ToNot(HaveOccurred())
     
         DeferCleanup(func() {
-            _ = clientset.CoreV1().
+            time.Sleep(1 * time.Second)
+            err := clientset.CoreV1().
                 Pods("default").
                 Delete(ctx, ebsTestName, metav1.DeleteOptions{})
+            Expect(err).ToNot(HaveOccurred())
         })
 
         // Step 3: Wait for PVC to bind
@@ -126,10 +130,8 @@ var _ = Describe("EKS Auto Mode", func() {
                 Get(ctx, ebsTestName, metav1.GetOptions{})
     
             return string(p.Status.Phase)
-        }, "2m", "5s").Should(Equal("Bound")) 
-
-        time.Sleep(5 * time.Second)
-
+        }, "2m", "5s").Should(Equal("Bound"))
+        
     })
 
 })
