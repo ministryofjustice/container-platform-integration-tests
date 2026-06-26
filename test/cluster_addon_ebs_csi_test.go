@@ -43,7 +43,7 @@ var _ = BeforeSuite(func() {
 
 var _ = Describe("EKS Auto Mode", func() {
 
-    FIt("should dynamically provision an EBS volume", func() {
+    It("should dynamically provision an EBS volume", func() {
         ctx := context.Background()
         ebsTestName := fmt.Sprintf("ebs-test-%d", GinkgoParallelProcess())
     
