@@ -20,7 +20,11 @@ var (
 
 var _ = BeforeSuite(func() {
     // Create the Storage Client
-    storageClient, err = storageclient.NewForConfig(config)
+    var err error
+    //storageClient, err = storageclient.NewForConfig(config)
+    storageClient, err = storageclient.NewForConfig(clientset.RESTClient().GetConfig())
+    Expect(err).ToNot(HaveOccurred())
+
     Expect(err).ToNot(HaveOccurred())
 })
 
