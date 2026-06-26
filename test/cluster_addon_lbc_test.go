@@ -16,24 +16,9 @@ import (
     "k8s.io/client-go/tools/clientcmd"
 )
 
-var (
-    clientset    *kubernetes.Clientset
-    ctx          context.Context
-)
-
 // Setup Kuberntes config, client and annotate default namespace
 var _ = BeforeSuite(func() {
-    // Load local Kubernetes configuration and create client
-    ctx = context.Background()
-
-    kubeconfig := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
-        clientcmd.NewDefaultClientConfigLoadingRules(),
-        &clientcmd.ConfigOverrides{},
-    )
-    config, err := kubeconfig.ClientConfig()
-    Expect(err).ToNot(HaveOccurred())
-    clientset, err = kubernetes.NewForConfig(config)
-    Expect(err).ToNot(HaveOccurred())
+    //ctx = context.Background()
 
     // Annotate the default namespace to allow Load Balancer Services - REQUIRED by Gatekeeper
     namespace := &corev1.Namespace{

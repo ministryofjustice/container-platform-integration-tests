@@ -19,22 +19,11 @@ import (
 )
 
 var (
-    clientset    *kubernetes.Clientset
     storageClient *storageclient.StorageV1Client
 )
 
 var _ = BeforeSuite(func() {
-    kubeconfig := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
-        clientcmd.NewDefaultClientConfigLoadingRules(),
-        &clientcmd.ConfigOverrides{},
-    )
-
-    config, err := kubeconfig.ClientConfig()
-    Expect(err).ToNot(HaveOccurred())
-
-    clientset, err = kubernetes.NewForConfig(config)
-    Expect(err).ToNot(HaveOccurred())
-
+    // Create the Storage Client
     storageClient, err = storageclient.NewForConfig(config)
     Expect(err).ToNot(HaveOccurred())
 })
@@ -42,7 +31,7 @@ var _ = BeforeSuite(func() {
 var _ = Describe("EKS Auto Mode", func() {
 
     It("should dynamically provision an EBS volume", func() {
-        ctx := context.Background()
+        //ctx := context.Background()
         ebsTestName := fmt.Sprintf("ebs-test-%d", GinkgoParallelProcess())
     
         // Step 1: Create PVC with explicit storage class
