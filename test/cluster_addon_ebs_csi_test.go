@@ -1,7 +1,6 @@
 package integration_tests
 
 import (
-    "context"
     "fmt"
     "time"
 
@@ -11,9 +10,6 @@ import (
     corev1 "k8s.io/api/core/v1"
     metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
     "k8s.io/apimachinery/pkg/api/resource"
-
-    "k8s.io/client-go/kubernetes"
-    "k8s.io/client-go/tools/clientcmd"
 
     storageclient "k8s.io/client-go/kubernetes/typed/storage/v1"
 )

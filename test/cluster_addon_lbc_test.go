@@ -3,8 +3,6 @@ package integration_tests
 // Test to verify that an AWS Load Balancer is successfully provisioned when a LoadBalancer Service is created
 
 import (
-    "context"
-
     . "github.com/onsi/ginkgo/v2"
     . "github.com/onsi/gomega"
 
@@ -12,7 +10,6 @@ import (
     metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
     "k8s.io/apimachinery/pkg/util/intstr"
 
-    "k8s.io/client-go/kubernetes"
     "k8s.io/client-go/tools/clientcmd"
 )
 
