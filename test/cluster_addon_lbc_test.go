@@ -11,24 +11,6 @@ import (
     "k8s.io/apimachinery/pkg/util/intstr"
 )
 
-// Setup Kuberntes config, client and annotate default namespace
-var _ = BeforeSuite(func() {
-    //ctx = context.Background()
-
-    // Annotate the default namespace to allow Load Balancer Services - REQUIRED by Gatekeeper
-    namespace := &corev1.Namespace{
-        ObjectMeta: metav1.ObjectMeta{
-            Name: "default",
-            Annotations: map[string]string{
-                "container-platform.justice.gov.uk/can-use-loadbalancer-services": "true",
-            },
-        },
-    }
-
-    _, err = clientset.CoreV1().Namespaces().Update(ctx, namespace, metav1.UpdateOptions{})
-    Expect(err).ToNot(HaveOccurred())
-})
-
 var _ = Describe("AWS Load Balancer Controller", func() {
     It("should provision an AWS load balancer for a Service", func() {
 
@@ -92,7 +74,7 @@ var _ = Describe("AWS Load Balancer Controller", func() {
                 Delete(ctx, "lbc-test", metav1.DeleteOptions{})
         })
 
-        /* Test the Load Balancer. Includes:
+        /* Test the Load Balancer. Includes tests that:
             Retrieves and validates the Service "lbc-test" from the default namespace
             Verifies that the Service type is set to LoadBalancer
             Checks that the Service has the AWS annotation configured for an NLB

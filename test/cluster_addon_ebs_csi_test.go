@@ -1,5 +1,7 @@
 package integration_tests
 
+// Test to create a PersistentVolumeClaim, attach it to a Pod  and verify this results in Kubernetes dynamically provisioning and binding an EBS volume successfully
+
 import (
     "fmt"
     "time"
@@ -10,23 +12,7 @@ import (
     corev1 "k8s.io/api/core/v1"
     metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
     "k8s.io/apimachinery/pkg/api/resource"
-
-    storageclient "k8s.io/client-go/kubernetes/typed/storage/v1"
 )
-
-var (
-    storageClient *storageclient.StorageV1Client
-)
-
-var _ = BeforeSuite(func() {
-    // Create the Storage Client
-    var err error
-    //storageClient, err = storageclient.NewForConfig(config)
-    storageClient, err = storageclient.NewForConfig(clientset.RESTClient().GetConfig())
-    Expect(err).ToNot(HaveOccurred())
-
-    Expect(err).ToNot(HaveOccurred())
-})
 
 var _ = Describe("EKS Auto Mode", func() {
 
