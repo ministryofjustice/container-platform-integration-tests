@@ -3,51 +3,13 @@ package integration_tests
 // Test to verify that an AWS Load Balancer is successfully provisioned when a LoadBalancer Service is created
 
 import (
-    "context"
-
     . "github.com/onsi/ginkgo/v2"
     . "github.com/onsi/gomega"
 
     corev1 "k8s.io/api/core/v1"
     metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
     "k8s.io/apimachinery/pkg/util/intstr"
-
-    "k8s.io/client-go/kubernetes"
-    "k8s.io/client-go/tools/clientcmd"
 )
-
-var (
-    clientset    *kubernetes.Clientset
-    ctx          context.Context
-)
-
-// Setup Kuberntes config, client and annotate default namespace
-var _ = BeforeSuite(func() {
-    // Load local Kubernetes configuration and create client
-    ctx = context.Background()
-
-    kubeconfig := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
-        clientcmd.NewDefaultClientConfigLoadingRules(),
-        &clientcmd.ConfigOverrides{},
-    )
-    config, err := kubeconfig.ClientConfig()
-    Expect(err).ToNot(HaveOccurred())
-    clientset, err = kubernetes.NewForConfig(config)
-    Expect(err).ToNot(HaveOccurred())
-
-    // Annotate the default namespace to allow Load Balancer Services - REQUIRED by Gatekeeper
-    namespace := &corev1.Namespace{
-        ObjectMeta: metav1.ObjectMeta{
-            Name: "default",
-            Annotations: map[string]string{
-                "container-platform.justice.gov.uk/can-use-loadbalancer-services": "true",
-            },
-        },
-    }
-
-    _, err = clientset.CoreV1().Namespaces().Update(ctx, namespace, metav1.UpdateOptions{})
-    Expect(err).ToNot(HaveOccurred())
-})
 
 var _ = Describe("AWS Load Balancer Controller", func() {
     It("should provision an AWS load balancer for a Service", func() {
@@ -112,7 +74,7 @@ var _ = Describe("AWS Load Balancer Controller", func() {
                 Delete(ctx, "lbc-test", metav1.DeleteOptions{})
         })
 
-        /* Test the Load Balancer. Includes:
+        /* Test the Load Balancer. Includes tests that:
             Retrieves and validates the Service "lbc-test" from the default namespace
             Verifies that the Service type is set to LoadBalancer
             Checks that the Service has the AWS annotation configured for an NLB

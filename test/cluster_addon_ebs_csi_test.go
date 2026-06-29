@@ -1,7 +1,8 @@
 package integration_tests
 
+// Test to create a PersistentVolumeClaim, attach it to a Pod  and verify this results in Kubernetes dynamically provisioning and binding an EBS volume successfully
+
 import (
-    "context"
     "fmt"
     "time"
 
@@ -11,38 +12,12 @@ import (
     corev1 "k8s.io/api/core/v1"
     metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
     "k8s.io/apimachinery/pkg/api/resource"
-
-    "k8s.io/client-go/kubernetes"
-    "k8s.io/client-go/tools/clientcmd"
-
-    storageclient "k8s.io/client-go/kubernetes/typed/storage/v1"
 )
-
-var (
-    clientset    *kubernetes.Clientset
-    storageClient *storageclient.StorageV1Client
-)
-
-var _ = BeforeSuite(func() {
-    kubeconfig := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
-        clientcmd.NewDefaultClientConfigLoadingRules(),
-        &clientcmd.ConfigOverrides{},
-    )
-
-    config, err := kubeconfig.ClientConfig()
-    Expect(err).ToNot(HaveOccurred())
-
-    clientset, err = kubernetes.NewForConfig(config)
-    Expect(err).ToNot(HaveOccurred())
-
-    storageClient, err = storageclient.NewForConfig(config)
-    Expect(err).ToNot(HaveOccurred())
-})
 
 var _ = Describe("EKS Auto Mode", func() {
 
     It("should dynamically provision an EBS volume", func() {
-        ctx := context.Background()
+        //ctx := context.Background()
         ebsTestName := fmt.Sprintf("ebs-test-%d", GinkgoParallelProcess())
     
         // Step 1: Create PVC with explicit storage class
