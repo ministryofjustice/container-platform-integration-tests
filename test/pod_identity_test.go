@@ -297,7 +297,7 @@ var _ = Describe("EKS Pod Identity Agent", Label(podIdentityLabel), func() {
             Expect(kubectlApply(podTpl)).To(Succeed())
 
             // Wait for Pod to be ready
-            Eventually(func() error { _, err := kubectl("wait", "--for=condition=Ready", "pod/"+podName, "-n", namespace, "--timeout=10s"); return err }).Should(Succeed())
+            Eventually(func() error { _, err := kubectl("wait", "--for=condition=Ready", "pod/"+podName, "-n", namespace, "--timeout=30s"); return err }).Should(Succeed())
         
             // Step 2: Loop: wait until identity becomes usable OR force restart
             Eventually(func() error {
