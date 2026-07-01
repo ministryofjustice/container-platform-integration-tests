@@ -1,11 +1,11 @@
 package integration_tests
 
 // Test for Pod Identity, includes tests that:
-//   Authorisation mode is one of API_AND_CONFIG_MAP or API_AND_CONFIG_MAP
-//   A pod can be created with the right inserted credentails for Pod Identity
+//   Authorisation mode is one of API_AND_CONFIG_MAP or API
+//   A pod can be created with the right inserted credentials for Pod Identity
 //   A role can be assumed with Pod Identity
 // The test creates and then deletes a temporary role called container-platform-temp-integration-test-role-DDMMYYYY-hhmmss 
-// This can be overridden to use a differnt role name with input flag podIdentityRoleArn
+// This can be overridden to use a different role name with input flag podIdentityRoleArn
 
 import (
     "context"
@@ -175,7 +175,7 @@ var _ = Describe("EKS Pod Identity Agent", Label(podIdentityLabel), func() {
             serviceAccountName = "pod-identity-test-sa"
             podName = "pod-identity-test-pod"
             
-            // Apply namespace with Pod Security Admission enabled t
+            // Apply namespace with Pod Security Admission enabled
             tpl, err := helpers.TemplateFile("./fixtures/namespace.yaml.tmpl", "namespace.yaml.tmpl", map[string]interface{}{
                 "namespace": namespace,
                 "psaMode":   "enforce",
@@ -186,11 +186,6 @@ var _ = Describe("EKS Pod Identity Agent", Label(podIdentityLabel), func() {
             // Fallback cleanup; may already be deleted by previous runs
             DeferCleanup(func() {
                 fmt.Println("Fallback cleaning up namespace...")
-            
-                //err := k8s.DeleteNamespaceE(GinkgoT(), options, namespace)
-                //if err != nil {
-                //    fmt.Printf("Warning: failed to delete namespace: %v\n", err)
-                //}
                 out, err := kubectl("delete", "namespace", namespace, "--ignore-not-found")
                 Expect(err).NotTo(HaveOccurred(), fmt.Sprintf("kubectl delete namespace failed: %s", out))
             })
@@ -272,7 +267,7 @@ var _ = Describe("EKS Pod Identity Agent", Label(podIdentityLabel), func() {
 
 
 
-        FIt("THEN the pod can assume the associated IAM role via the Pod Identity Agent", func() {
+        It("THEN the pod can assume the associated IAM role via the Pod Identity Agent", func() {
         
             // Calculate the temporary role name
             if createTemporaryIAMRole {
@@ -306,7 +301,7 @@ var _ = Describe("EKS Pod Identity Agent", Label(podIdentityLabel), func() {
         
             // Step 2: Loop: wait until identity becomes usable OR force restart
             Eventually(func() error {
-                // First Check Pod Identity environment variable injection
+                // First check Pod Identity environment variable injection
                 env, err := kubectlExec(namespace, podName, "env")
                 if err != nil {
                     return err
@@ -322,7 +317,7 @@ var _ = Describe("EKS Pod Identity Agent", Label(podIdentityLabel), func() {
                 // Step 2a: Try calling STS
                 out, err := kubectlExec(namespace, podName, "aws", "sts", "get-caller-identity")
 
-                // Step 2b: Validate Role
+                // Step 2b: Validate role
                 if err == nil {
                     type CallerIdentity struct {
                         Arn string `json:"Arn"`
@@ -354,7 +349,7 @@ var _ = Describe("EKS Pod Identity Agent", Label(podIdentityLabel), func() {
                     // Strict role match, prevents false positives from similarly named roles
                     Expect(actual).To(Equal(expectedExact), fmt.Sprintf("role validation failed: expected '%s', got '%s' (full ARN: %s)", expectedExact, actual, ci.Arn,),)
                 
-                    // Useful DEBUG for successful test 
+                    // Useful DEBUG output for successful test 
                     fmt.Printf("DEBUG Assumed role '%s' validated successfully.\nMatched exact segment: '%s'\nExpected exact segment: '%s'\nFull ARN: '%s'\n", roleName, actual, expectedExact, ci.Arn,)
                 
                     return nil
