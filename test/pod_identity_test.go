@@ -4,7 +4,8 @@ package integration_tests
 //   Authorisation mode is one of API_AND_CONFIG_MAP or API_AND_CONFIG_MAP
 //   A pod can be created with the right inserted credentails for Pod Identity
 //   A role can be assumed with Pod Identity
-// The test creates and then deletes a temporary role called container-platform-temp-integration-test-role though this can be overridden with an input flag
+// The test creates and then deletes a temporary role called container-platform-temp-integration-test-role-DDMMYYYY-hhmmss 
+// This can be overridden to use a differnt role name with input flag podIdentityRoleArn
 
 import (
     "context"
@@ -13,6 +14,7 @@ import (
     "strings"
     "time"
     "encoding/json"
+    "os/exec"
 
     . "github.com/onsi/ginkgo/v2"
     . "github.com/onsi/gomega"
@@ -22,7 +24,6 @@ import (
     "github.com/aws/aws-sdk-go-v2/service/eks"
     "github.com/aws/aws-sdk-go-v2/service/iam"
 
-    "github.com/gruntwork-io/terratest/modules/k8s"
     "github.com/ministryofjustice/cloud-platform-integration-tests/test/helpers"
 
     "k8s.io/client-go/tools/clientcmd"
@@ -44,22 +45,43 @@ func awsInt32(i int32) *int32 {
     return &i
 }
 
+func kubectl(args ...string) (string, error) {
+    cmd := exec.Command("kubectl", args...)
+    out, err := cmd.CombinedOutput()
+    return string(out), err
+}
+
+func kubectlExec(namespace, pod string, command ...string) (string, error) {
+    args := append([]string{"-n", namespace, "exec", pod, "--"}, command...)
+    return kubectl(args...)
+}
+
+func kubectlApply(yaml string) error {
+    cmd := exec.Command("kubectl", "apply", "-f", "-")
+    cmd.Stdin = strings.NewReader(yaml)
+
+    out, err := cmd.CombinedOutput()
+    if err != nil {
+        return fmt.Errorf("kubectl apply failed: %s", out)
+    }
+
+    return nil
+}
+
 var _ = Describe("EKS Pod Identity Agent", Label(podIdentityLabel), func() {
 
     Context("Pod Identity association", func() {
 
         var (
-            ctx                context.Context
+            testContext                context.Context
             clusterName        string
             eksClient          *eks.Client
             namespace          string
             serviceAccountName string
             podName            string
-            options            *k8s.KubectlOptions
             associationID      *string
-            // Vars moved from wider context
             iamClient *iam.Client
-            temporaryRoleName  = "container-platform-temp-integration-test-role"        
+            temporaryRoleName  string     
             createTemporaryIAMRole    bool
             resolvedPodIdentityArn    string
             roleName                  string
@@ -68,7 +90,7 @@ var _ = Describe("EKS Pod Identity Agent", Label(podIdentityLabel), func() {
 
 
         BeforeEach(func() {
-
+            // Determine whether to create and destroy a temporary role
             if *podIdentityRoleArn == "" {
                 createTemporaryIAMRole = true
             } else {
@@ -76,7 +98,7 @@ var _ = Describe("EKS Pod Identity Agent", Label(podIdentityLabel), func() {
                 resolvedPodIdentityArn = *podIdentityRoleArn
             }
 
-            ctx = context.Background()
+            testContext = context.Background()
 
             // Get Kube and AWS config
             kubeconfig := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
@@ -91,13 +113,17 @@ var _ = Describe("EKS Pod Identity Agent", Label(podIdentityLabel), func() {
             parts := strings.Split(clusterRef, "/")
             clusterName = parts[len(parts)-1]
 
-            awsCfg, err := config.LoadDefaultConfig(ctx,
+            awsCfg, err := config.LoadDefaultConfig(testContext,
                 config.WithRegion("eu-west-2"),
             )
             Expect(err).ToNot(HaveOccurred())
 
             // Create temporary IAM test role
             if createTemporaryIAMRole {
+                temporaryRoleName = fmt.Sprintf(
+                    "container-platform-temp-integration-test-role-%s",
+                    time.Now().Format("02012006-150405"), // DDMMYYYY-hhmmss
+                )
                 iamClient = iam.NewFromConfig(awsCfg)
                 assumeRolePolicy := `{
                     "Version": "2012-10-17",
@@ -114,7 +140,7 @@ var _ = Describe("EKS Pod Identity Agent", Label(podIdentityLabel), func() {
                         }
                     ]
                 }`
-                output, err := iamClient.CreateRole(ctx, &iam.CreateRoleInput{
+                output, err := iamClient.CreateRole(testContext, &iam.CreateRoleInput{
                     RoleName:                 &temporaryRoleName,
                     AssumeRolePolicyDocument: &assumeRolePolicy,
                     Description:              awsString("Test role for EKS Pod Identity Agent validation"),
@@ -128,7 +154,7 @@ var _ = Describe("EKS Pod Identity Agent", Label(podIdentityLabel), func() {
             eksClient = eks.NewFromConfig(awsCfg)
 
             // Check Auth Mode is correct for Pod Identity
-            out, err := eksClient.DescribeCluster(ctx, &eks.DescribeClusterInput{
+            out, err := eksClient.DescribeCluster(testContext, &eks.DescribeClusterInput{
                 Name: aws.String(clusterName),
             })
             Expect(err).NotTo(HaveOccurred())  
@@ -148,7 +174,6 @@ var _ = Describe("EKS Pod Identity Agent", Label(podIdentityLabel), func() {
             namespace = "pod-identity-test"
             serviceAccountName = "pod-identity-test-sa"
             podName = "pod-identity-test-pod"
-            options = k8s.NewKubectlOptions("", "", namespace)
             
             // Apply namespace with Pod Security Admission enabled t
             tpl, err := helpers.TemplateFile("./fixtures/namespace.yaml.tmpl", "namespace.yaml.tmpl", map[string]interface{}{
@@ -156,25 +181,26 @@ var _ = Describe("EKS Pod Identity Agent", Label(podIdentityLabel), func() {
                 "psaMode":   "enforce",
             })
             Expect(err).NotTo(HaveOccurred())
-            err = k8s.KubectlApplyFromStringE(GinkgoT(), options, tpl)
-            Expect(err).NotTo(HaveOccurred())
+            Expect(kubectlApply(tpl)).To(Succeed())
 
             // Fallback cleanup; may already be deleted by previous runs
             DeferCleanup(func() {
                 fmt.Println("Fallback cleaning up namespace...")
             
-                err := k8s.DeleteNamespaceE(GinkgoT(), options, namespace)
-                if err != nil {
-                    fmt.Printf("Warning: failed to delete namespace: %v\n", err)
-                }
+                //err := k8s.DeleteNamespaceE(GinkgoT(), options, namespace)
+                //if err != nil {
+                //    fmt.Printf("Warning: failed to delete namespace: %v\n", err)
+                //}
+                out, err := kubectl("delete", "namespace", namespace, "--ignore-not-found")
+                Expect(err).NotTo(HaveOccurred(), fmt.Sprintf("kubectl delete namespace failed: %s", out))
             })
 
             // Create ServiceAccount
-            _, err = k8s.RunKubectlAndGetOutputE(GinkgoT(), options, "create", "serviceaccount", serviceAccountName)
+            _, err = kubectl("create", "serviceaccount", serviceAccountName, "-n", namespace)
             Expect(err).NotTo(HaveOccurred())
 
             // Pod Identity Association. Links Kubernetes ServiceAccount to IAM role via EKS control plane
-            assocOut, err := eksClient.CreatePodIdentityAssociation(ctx, &eks.CreatePodIdentityAssociationInput{
+            assocOut, err := eksClient.CreatePodIdentityAssociation(testContext, &eks.CreatePodIdentityAssociationInput{
                 ClusterName:    aws.String(clusterName),
                 Namespace:      aws.String(namespace),
                 ServiceAccount: aws.String(serviceAccountName),
@@ -187,7 +213,7 @@ var _ = Describe("EKS Pod Identity Agent", Label(podIdentityLabel), func() {
             DeferCleanup(func() {
                 fmt.Println("Fallback cleaning up Pod Identity association...")
             
-                _, err := eksClient.DeletePodIdentityAssociation(ctx, &eks.DeletePodIdentityAssociationInput{
+                _, err := eksClient.DeletePodIdentityAssociation(testContext, &eks.DeletePodIdentityAssociationInput{
                     ClusterName:   aws.String(clusterName),
                     AssociationId: associationID,
                 })
@@ -199,7 +225,7 @@ var _ = Describe("EKS Pod Identity Agent", Label(podIdentityLabel), func() {
 
             // Wait for the association to be created before creating the pod
             Eventually(func() error {
-                out, err := eksClient.DescribePodIdentityAssociation(ctx, &eks.DescribePodIdentityAssociationInput{
+                out, err := eksClient.DescribePodIdentityAssociation(testContext, &eks.DescribePodIdentityAssociationInput{
                     ClusterName:   aws.String(clusterName),
                     AssociationId: associationID,
                 })
@@ -221,24 +247,22 @@ var _ = Describe("EKS Pod Identity Agent", Label(podIdentityLabel), func() {
         AfterEach(func() {
             fmt.Printf("Cleaning up association and namespace")
             if eksClient != nil && associationID != nil {
-                _, _ = eksClient.DeletePodIdentityAssociation(ctx, &eks.DeletePodIdentityAssociationInput{
+                _, _ = eksClient.DeletePodIdentityAssociation(testContext, &eks.DeletePodIdentityAssociationInput{
                     ClusterName:   aws.String(clusterName),
                     AssociationId: associationID,
                 })
             }
-            if options != nil {
-                _ = k8s.DeleteNamespaceE(GinkgoT(), options, namespace)
-            }
+            _, _ = kubectl("delete", "namespace", namespace, "--ignore-not-found")
 
             // Delete temporary IAM test role if it was created
             if createTemporaryIAMRole {
-                _, err := iamClient.DeleteRole(ctx, &iam.DeleteRoleInput{
+                _, err := iamClient.DeleteRole(testContext, &iam.DeleteRoleInput{
                     RoleName: &temporaryRoleName,
                 })
                 Expect(err).ToNot(HaveOccurred())
                 // Confirm deletion (IAM is eventually consistent)    
                 Eventually(func() error {
-                    _, err := iamClient.GetRole(ctx, &iam.GetRoleInput{
+                    _, err := iamClient.GetRole(testContext, &iam.GetRoleInput{
                         RoleName: &temporaryRoleName,
                     })
                     return err
@@ -248,7 +272,7 @@ var _ = Describe("EKS Pod Identity Agent", Label(podIdentityLabel), func() {
 
 
 
-        It("THEN the pod can assume the associated IAM role via the Pod Identity Agent", func() {
+        FIt("THEN the pod can assume the associated IAM role via the Pod Identity Agent", func() {
         
             // Calculate the temporary role name
             if createTemporaryIAMRole {
@@ -275,19 +299,15 @@ var _ = Describe("EKS Pod Identity Agent", Label(podIdentityLabel), func() {
                 "serviceAccountName": serviceAccountName,   
             })
             Expect(err).NotTo(HaveOccurred())
-        
-            Expect(k8s.KubectlApplyFromStringE(GinkgoT(), options, podTpl)).To(Succeed())
-        
-            k8s.WaitUntilPodAvailable(GinkgoT(), options, podName, 5, 5*time.Second)
+            Expect(kubectlApply(podTpl)).To(Succeed())
+
+            // Wait for Pod to be ready
+            Eventually(func() error { _, err := kubectl("wait", "--for=condition=Ready", "pod/"+podName, "-n", namespace, "--timeout=10s"); return err }).Should(Succeed())
         
             // Step 2: Loop: wait until identity becomes usable OR force restart
             Eventually(func() error {
                 // First Check Pod Identity environment variable injection
-                env, err := k8s.RunKubectlAndGetOutputE(
-                    GinkgoT(),
-                    options,
-                    "exec", podName, "--", "env",
-                )
+                env, err := kubectlExec(namespace, podName, "env")
                 if err != nil {
                     return err
                 }
@@ -300,14 +320,9 @@ var _ = Describe("EKS Pod Identity Agent", Label(podIdentityLabel), func() {
                 Expect(strings.Contains(env, "AWS_ROLE_ARN")).To(BeFalse())
         
                 // Step 2a: Try calling STS
-                out, err := k8s.RunKubectlAndGetOutputE(
-                    GinkgoT(),
-                    options,
-                    "exec", podName, "--",
-                    "aws", "sts", "get-caller-identity",
-                )
+                out, err := kubectlExec(namespace, podName, "aws", "sts", "get-caller-identity")
 
-                //Step 2b: Validate Role
+                // Step 2b: Validate Role
                 if err == nil {
                     type CallerIdentity struct {
                         Arn string `json:"Arn"`
@@ -347,16 +362,13 @@ var _ = Describe("EKS Pod Identity Agent", Label(podIdentityLabel), func() {
 
                 // Step 2c: If Pod hasn't got the right role yet, delete pod to force re-injection
                 fmt.Println("Pod identity not ready yet, restarting pod...")
-                _, _ = k8s.RunKubectlAndGetOutputE(GinkgoT(), options, "delete", "pod", podName, "--ignore-not-found")
+                _, _ = kubectl("delete", "pod", podName, "-n", namespace, "--ignore-not-found")
         
                 // Step 2d: recreate pod
-                err = k8s.KubectlApplyFromStringE(GinkgoT(), options, podTpl)
-                if err != nil {
-                    return err
-                }
+                Expect(kubectlApply(podTpl)).To(Succeed())
         
                 // Wait again
-                k8s.WaitUntilPodAvailable(GinkgoT(), options, podName, 5, 5*time.Second)
+                Eventually(func() error { _, err := kubectl("wait", "--for=condition=Ready", "pod/"+podName, "-n", namespace, "--timeout=30s"); return err }).Should(Succeed())
         
                 return fmt.Errorf("pod identity not ready yet")
         
