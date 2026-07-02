@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ .podName }}
+  namespace: {{ .namespace }}
+spec:
+  serviceAccountName: {{ .serviceAccountName }}
+  restartPolicy: Never
+
+  securityContext:
+    runAsNonRoot: true
+    seccompProfile:
+      type: RuntimeDefault
+
+  containers:
+    - name: aws-cli
+      image: public.ecr.aws/aws-cli/aws-cli:2.15.0
+      command:
+        - sleep
+        - "3600"
+
+      securityContext:
+        allowPrivilegeEscalation: false
+        runAsNonRoot: true
+        runAsUser: 1000
+        capabilities:
+          drop:
+            - ALL
