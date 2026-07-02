@@ -23,6 +23,7 @@ import (
     "github.com/aws/aws-sdk-go-v2/config"
     "github.com/aws/aws-sdk-go-v2/service/eks"
     "github.com/aws/aws-sdk-go-v2/service/iam"
+    "github.com/aws/aws-sdk-go-v2/service/iam/types"
 
     "github.com/ministryofjustice/cloud-platform-integration-tests/test/helpers"
 
@@ -143,8 +144,14 @@ var _ = Describe("EKS Pod Identity Agent", Label(podIdentityLabel), func() {
                 output, err := iamClient.CreateRole(testContext, &iam.CreateRoleInput{
                     RoleName:                 &temporaryRoleName,
                     AssumeRolePolicyDocument: &assumeRolePolicy,
-                    Description:              awsString("Test role for EKS Pod Identity Agent validation"),
+                    Description: awsString(fmt.Sprintf("Test role for EKS cluster %s Pod Identity Agent validation", clusterName)),
                     MaxSessionDuration:       awsInt32(3600),
+                    Tags: []types.Tag{
+                    {
+                        Key:   awsString("eks:cluster-name"),
+                        Value: awsString(clusterName),
+                        },
+                    },
                 })
                 Expect(err).ToNot(HaveOccurred())
                 resolvedPodIdentityArn = *output.Role.Arn
