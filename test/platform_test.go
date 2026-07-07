@@ -14,7 +14,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/ministryofjustice/cloud-platform-go-library/client"
-	"github.com/ministryofjustice/cloud-platform-integration-tests/test/config"
+	"github.com/ministryofjustice/container-platform-integration-tests/test/config"
 )
 
 // // All clusters have access to the test domain name and their own domain name

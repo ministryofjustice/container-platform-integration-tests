@@ -9,7 +9,7 @@ import (
 	"github.com/gruntwork-io/terratest/modules/k8s"
 	"github.com/gruntwork-io/terratest/modules/logger"
 	"github.com/gruntwork-io/terratest/modules/random"
-	"github.com/ministryofjustice/cloud-platform-integration-tests/test/helpers"
+	"github.com/ministryofjustice/container-platform-integration-tests/test/helpers"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
