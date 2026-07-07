@@ -1,4 +1,4 @@
-module github.com/ministryofjustice/cloud-platform-integration-tests
+module github.com/ministryofjustice/container-platform-integration-tests
 
 go 1.25.4
 
