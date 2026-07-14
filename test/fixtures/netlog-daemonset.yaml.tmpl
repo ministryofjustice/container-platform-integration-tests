@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: {{ .name }}
+  namespace: {{ .namespace }}
+  labels:
+    app: netlog
+    # Identifies this DaemonSet as test-suite managed so it can be found and
+    # deleted at the start of every run, regardless of which unique name it was created with
+    managed-by: container-platform-integration-tests
+spec:
+  selector:
+    matchLabels:
+      app: netlog
+      # Unique per run so the selector doesn't overlap with any DaemonSet
+      # left behind (deletion at BeforeAll should prevent this, but this is
+      # a safety net against orphaned pods being adopted by mistake)
+      netlog-instance: "{{ .name }}"
+  template:
+    metadata:
+      labels:
+        app: netlog
+        netlog-instance: "{{ .name }}"
+    spec:
+      tolerations:
+        # Ensure it runs on all nodes, including master/control-plane nodes if applicable
+        - operator: Exists
+      containers:
+        - name: netlog
+          image: public.ecr.aws/docker/library/alpine:3.23@sha256:fd791d74b68913cbb027c6546007b3f0d3bc45125f797758156952bc2d6daf40
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              touch /var/log/aws-routed-eni/network-policy-agent.log
+              tail -F /var/log/aws-routed-eni/network-policy-agent.log
+          volumeMounts:
+            - name: host-log
+              mountPath: /var/log/aws-routed-eni
+              readOnly: true
+      volumes:
+        - name: host-log
+          hostPath:
+            path: /var/log/aws-routed-eni
+            type: DirectoryOrCreate
