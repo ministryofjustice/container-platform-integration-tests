@@ -41,9 +41,9 @@ var _ = Describe("Node Pool Tolerations and Node Selection", Label(nodePoolLabel
 			}
 
 			_, err := clientset.CoreV1().Namespaces().Create(testContext, ns, metav1.CreateOptions{})
-			if err != nil {
-				// Namespace may already exist, that's okay
-				fmt.Printf("Note: namespace creation returned: %v\n", err)
+			// Namespace may already exist. Fail on any other error
+			if err != nil && !apierrors.IsAlreadyExists(err) {
+				Expect(err).NotTo(HaveOccurred())
 			}
 
 			// Cleanup on completion
@@ -162,9 +162,9 @@ var _ = Describe("Node Pool Tolerations and Node Selection", Label(nodePoolLabel
 			}
 
 			_, err := clientset.CoreV1().Namespaces().Create(testContext, ns, metav1.CreateOptions{})
-			if err != nil {
-				// Namespace may already exist, that's okay
-				fmt.Printf("Note: namespace creation returned: %v\n", err)
+			// Namespace may already exist. Fail on any other error
+			if err != nil && !apierrors.IsAlreadyExists(err) {
+				Expect(err).NotTo(HaveOccurred())
 			}
 
 			// Cleanup on completion
