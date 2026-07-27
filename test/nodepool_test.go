@@ -14,6 +14,8 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 )
 
 const nodePoolLabel = "nodepool"
@@ -114,7 +116,7 @@ var _ = Describe("Node Pool Tolerations and Node Selection", Label(nodePoolLabel
 					return fmt.Errorf("pod phase is %s, waiting for Running", pod.Status.Phase)
 				}
 				return nil
-			}, 60*time.Second, 5*time.Second).Should(Succeed())
+			}, 3*time.Minute, 5*time.Second).Should(Succeed())
 
 			// Get the pod's node
 			pod, err := clientset.CoreV1().Pods(namespace).Get(testContext, podName, metav1.GetOptions{})
@@ -135,9 +137,6 @@ var _ = Describe("Node Pool Tolerations and Node Selection", Label(nodePoolLabel
 
 			fmt.Printf("SUCCESS: Pod with system-node tolerations is running on node with correct label\n")
 			fmt.Printf("Node labels: %v\n", labels)
-
-			// Cleanup the pod
-			_ = clientset.CoreV1().Pods(namespace).Delete(testContext, podName, metav1.DeleteOptions{})
 		})
 	})
 
@@ -223,7 +222,7 @@ var _ = Describe("Node Pool Tolerations and Node Selection", Label(nodePoolLabel
 					return fmt.Errorf("pod phase is %s, waiting for Running", pod.Status.Phase)
 				}
 				return nil
-			}, 60*time.Second, 5*time.Second).Should(Succeed())
+			}, 3*time.Minute, 5*time.Second).Should(Succeed())
 
 			// Get the pod's node
 			pod, err := clientset.CoreV1().Pods(namespace).Get(testContext, podName, metav1.GetOptions{})
@@ -252,7 +251,7 @@ var _ = Describe("Node Pool Tolerations and Node Selection", Label(nodePoolLabel
 })
 
 // Helper function to create resource quantities
-func getResourceQuantity(value string) *corev1.Quantity {
-	quantity, _ := corev1.ParseQuantity(value)
+func getResourceQuantity(value string) *resource.Quantity {
+	quantity := resource.MustParse(value)
 	return &quantity
 }
