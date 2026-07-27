@@ -83,6 +83,10 @@ var _ = Describe("Node Pool Tolerations and Node Selection", Label(nodePoolLabel
 							},
 						},
 					},
+					// Select Sysgtem Node
+					NodeSelector: map[string]string{
+						"container-platform.justice.gov.uk/system-ng": "true",
+					},
 					// Add system-node tolerations
 					Tolerations: []corev1.Toleration{
 						{
