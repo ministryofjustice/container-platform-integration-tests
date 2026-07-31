@@ -55,7 +55,11 @@ func CaptureNodeLogsE(ctx context.Context, config *rest.Config, nodeName string)
 		"metadata":   map[string]interface{}{"name": nodeName},
 		"spec": map[string]interface{}{
 			"logCapture": map[string]interface{}{
-				"categories":  []interface{}{"All"},
+				// Networking is the narrowest category that bundles the VPC
+				// CNI logs under /var/log/aws-routed-eni/, including
+				// network-policy-agent.log. Avoid "All", which pulls the
+				// entire node journal onto the caller's machine.
+				"categories":  []interface{}{"Networking"},
 				"destination": "node",
 			},
 		},
