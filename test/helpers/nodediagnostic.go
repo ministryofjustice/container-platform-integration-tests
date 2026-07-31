@@ -32,6 +32,11 @@ var nodeDiagnosticGVR = schema.GroupVersionResource{
 // NodeDiagnostic resource (destination "node") and downloads the resulting
 // tarball through the kubelet node proxy API.
 //
+// NodeDiagnostic is the AWS-recommended way of retrieving logs from an EKS
+// Auto Mode node:
+//   - https://docs.aws.amazon.com/eks/latest/userguide/auto-troubleshoot.html
+//   - https://docs.aws.amazon.com/eks/latest/userguide/auto-get-logs.html
+//
 // This removes the need for privileged log-tailer DaemonSets when validating
 // node-level log output, e.g. the VPC CNI network policy agent log written
 // when the NodeClass sets networkPolicyEventLogs: Enabled.
