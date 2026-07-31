@@ -3,6 +3,7 @@ package integration_tests
 import (
 	"fmt"
 	"html/template"
+	"regexp"
 	"strings"
 	"time"
 
@@ -120,6 +121,39 @@ var _ = Describe("NetworkPolicy", func() {
 			// 	_, err = k8s.RunKubectlAndGetOutputE(GinkgoT(), options2, "exec", "test-pod-2", "--", "timeout", "5", "nc", "-z", "-v", podIP, "8080")
 			// 	Expect(err).To(HaveOccurred())
 			// })
+
+			It("THEN deny cross-namespace traffic AND the deny verdict is observable on the node", func() {
+				serverIP, err := k8s.RunKubectlAndGetOutputE(GinkgoT(), options1, "get", "pod", "test-pod-1", "-o", "jsonpath={.status.podIP}")
+				Expect(err).NotTo(HaveOccurred())
+				Expect(serverIP).NotTo(BeEmpty())
+
+				nodeName, err := k8s.RunKubectlAndGetOutputE(GinkgoT(), options1, "get", "pod", "test-pod-1", "-o", "jsonpath={.spec.nodeName}")
+				Expect(err).NotTo(HaveOccurred())
+				Expect(nodeName).NotTo(BeEmpty())
+
+				clientIP, err := k8s.RunKubectlAndGetOutputE(GinkgoT(), options2, "get", "pod", "test-pod-2", "-o", "jsonpath={.status.podIP}")
+				Expect(err).NotTo(HaveOccurred())
+				Expect(clientIP).NotTo(BeEmpty())
+
+				// Enforcement: repeated connection attempts across namespaces must fail.
+				for i := 0; i < 5; i++ {
+					_, err := k8s.RunKubectlAndGetOutputE(GinkgoT(), options2, "exec", "test-pod-2", "--", "nc", "-z", "-v", "-w3", serverIP, "8080")
+					Expect(err).To(HaveOccurred())
+					time.Sleep(2 * time.Second)
+				}
+
+				// Observability: the deny verdict must be retrievable from the
+				// node's network policy agent log via the AWS-managed
+				// NodeDiagnostic API. No privileged workloads are deployed.
+				tarball, err := helpers.CaptureNodeLogsE(ctx, kubeConfig, nodeName)
+				Expect(err).NotTo(HaveOccurred())
+
+				agentLog, err := helpers.ExtractFromTarGzE(tarball, "network-policy-agent.log")
+				Expect(err).NotTo(HaveOccurred())
+
+				flowPattern := fmt.Sprintf(`Src IP: %s Src Port: \d+ Dest IP: %s Dest Port: 8080 Proto TCP Verdict DENY`, regexp.QuoteMeta(clientIP), regexp.QuoteMeta(serverIP))
+				Expect(agentLog).To(MatchRegexp(flowPattern))
+			})
 
 			It("THEN ALLOW same-namespace traffic", func() {
 				podIP, err := k8s.RunKubectlAndGetOutputE(GinkgoT(), options1, "get", "pod", "test-pod-1b", "-o", "jsonpath={.status.podIP}")
