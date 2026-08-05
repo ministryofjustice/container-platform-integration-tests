@@ -6,6 +6,7 @@ metadata:
     cloud-platform.justice.gov.uk/is-production: "false"
     cloud-platform.justice.gov.uk/environment-name: "staging"
     pod-security.kubernetes.io/{{ or .psaMode "enforce" }}: {{ or .psaLevel "restricted" }}
+    name: {{ .namespace }}
 
 ---
 
@@ -71,6 +72,7 @@ rules:
     - poddisruptionbudgets
     - networkpolicies
     - deployments
+    - daemonsets
     verbs:
     - list
     - watch
