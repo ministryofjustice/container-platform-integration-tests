@@ -178,6 +178,94 @@ var _ = Describe("ArgoCD Hub Configuration", Label("argocd"), func() {
 						"BU project %s must block Namespace creation (baseline owns namespace lifecycle)", name)
 				}
 			})
+
+			// Layer 2 of the BU-user ArgoCD access model (ADR-002,
+			// cloud-platform#8548). A BU engineer mapped to the global VIEWER
+			// role sees no Applications until their BU AppProject grants a
+			// read-only project role. This guards that grant against drift:
+			// the role must exist, be read-only, and be bound to a group.
+			It("grants each BU AppProject a read-only bu-viewer role bound to a group", func() {
+				projects, err := dynamicClient.Resource(appProjectGVR).Namespace("argocd").List(
+					context.Background(), metav1.ListOptions{},
+				)
+				Expect(err).ToNot(HaveOccurred())
+
+				// Mutating verbs that must never appear on the read-only role.
+				writeVerbs := map[string]bool{
+					"create": true, "update": true, "patch": true,
+					"delete": true, "deletecollection": true, "sync": true,
+					"override": true, "action": true, "*": true,
+				}
+
+				for _, project := range projects.Items {
+					name := project.GetName()
+					if name == "default" || strings.HasPrefix(name, "platform-") {
+						continue
+					}
+					// The ephemeral dev spoke registration produces a BU
+					// AppProject (labelled container-platform/bu=ephemeral) with
+					// no BU parent group, so it deliberately has no bu-viewer
+					// role. Skip it — the viewer role applies to real BUs only.
+					if bu, _, _ := unstructured.NestedString(project.Object, "metadata", "labels", "container-platform/bu"); bu == "ephemeral" {
+						continue
+					}
+
+					roles, found, err := unstructured.NestedSlice(project.Object, "spec", "roles")
+					Expect(err).ToNot(HaveOccurred())
+					Expect(found).To(BeTrue(), "BU project %s must define spec.roles", name)
+
+					var viewer map[string]interface{}
+					for _, r := range roles {
+						role, ok := r.(map[string]interface{})
+						if !ok {
+							continue
+						}
+						if roleName, _ := role["name"].(string); roleName == "bu-viewer" {
+							viewer = role
+							break
+						}
+					}
+					Expect(viewer).ToNot(BeNil(), "BU project %s must define a bu-viewer role", name)
+
+					// The role must bind at least one group (the BU parent IdC
+					// group). We assert presence, not the specific ID, so the
+					// test is not coupled to environment-specific group IDs.
+					groups, found, err := unstructured.NestedStringSlice(viewer, "groups")
+					Expect(err).ToNot(HaveOccurred())
+					Expect(found).To(BeTrue(), "bu-viewer role in %s must have groups", name)
+					Expect(groups).ToNot(BeEmpty(), "bu-viewer role in %s must bind a group", name)
+
+					policies, found, err := unstructured.NestedStringSlice(viewer, "policies")
+					Expect(err).ToNot(HaveOccurred())
+					Expect(found).To(BeTrue(), "bu-viewer role in %s must have policies", name)
+
+					// Must grant read (applications, get) and must not grant any
+					// mutating verb on applications. Policy format:
+					//   p, proj:<project>:<role>, <resource>, <action>, <object>, <effect>
+					hasAppGet := false
+					for _, p := range policies {
+						fields := strings.Split(p, ",")
+						for i := range fields {
+							fields[i] = strings.TrimSpace(fields[i])
+						}
+						// Expect 6 fields; skip anything malformed rather than panic.
+						if len(fields) < 6 {
+							continue
+						}
+						resource, action, effect := fields[2], fields[3], fields[5]
+						if resource != "applications" {
+							continue
+						}
+						if action == "get" && effect == "allow" {
+							hasAppGet = true
+						}
+						Expect(writeVerbs[action]).To(BeFalse(),
+							"bu-viewer role in %s must be read-only; found mutating action %q on applications", name, action)
+					}
+					Expect(hasAppGet).To(BeTrue(),
+						"bu-viewer role in %s must grant 'applications, get' so the BU can see its Applications", name)
+				}
+			})
 		})
 
 		Describe("Baseline ApplicationSets", func() {
